@@ -15,6 +15,7 @@
   "license": "BSD-2-Clause",
   "dependencies": {
     "q": "~1.4.1",
-    "mysql": "~2.10.2"
+    "mysql": "~2.10.2",
+    "memjs": "~0.10.0"
   }
 }

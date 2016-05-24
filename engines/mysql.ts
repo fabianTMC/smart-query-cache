@@ -7,7 +7,7 @@ import {GenericEngine} from "./genericEngine";
 
 import * as Q from "q";
 
-var mysql = require("mysql");
+let mysql = require("mysql");
 
 export class MySQLEngine extends GenericEngine {
 	private pool: any;
