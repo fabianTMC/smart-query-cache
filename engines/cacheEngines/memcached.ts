@@ -36,7 +36,7 @@ export class MemcachedCacheEngine implements CacheEngineInterface {
 	        } else {
 	            if(success) {
 	                // REMOVAL HIT
-	                deferred.reject(true);
+	                deferred.resolve(true);
 	            } else {
 	                // REMOVAL MISS
 	                deferred.reject(false);
@@ -77,10 +77,10 @@ export class MemcachedCacheEngine implements CacheEngineInterface {
 	            // check if we got a value
 	            if(val !== null) {
 	                // CACHE HIT
-	                deferred.resolve(val)
+	                deferred.resolve(JSON.parse(val))
 	            } else {
 	                // CACHE MISS
-	                deferred.reject(val);
+	                deferred.reject(null);
 	            }
 	        }
 	    });
