@@ -14,8 +14,9 @@ import {MySQLEngine} from "./engines/mysql";
 export class SmartCachier {
     private config: SmartCachierConfig;
     private cacheConfig: SmartCachierCacheConfig;
+
     private connection: GenericEngine;
-    private cacheEngine: CacheEngineInterface;
+    private cacheConnection: CacheEngineInterface;
 
     // Constructor for the class
     constructor(config: SmartCachierConfig, cacheConfig: SmartCachierCacheConfig, notifier?: Notifier) {
@@ -24,17 +25,17 @@ export class SmartCachier {
 
         switch(this.cacheConfig.engine.toLowerCase()) {
             case "memcached":
-                this.cacheEngine = new MemcachedCacheEngine(this.cacheConfig.host);
+                this.cacheConnection = new MemcachedCacheEngine(this.cacheConfig.host);
                 break;
         }
 
         // Check if a cache engine was instantiated
-        if(this.cacheEngine) {
+        if(this.cacheConnection) {
             switch(this.config.engine.toLowerCase()) {
                 case "mysql":
                     this.connection = new MySQLEngine(
                         this.config.auth,
-                        this.cacheEngine,
+                        this.cacheConnection,
                         notifier
                     );
                     break;
@@ -46,5 +47,9 @@ export class SmartCachier {
 
     public query(queryFile: string, variables: Array<string>): Q.Promise<any> {
         return this.connection.query(queryFile, variables);
+    }
+
+    public flush(): Q.Promise<any> {
+        return this.cacheConnection.flush();
     }
 }
