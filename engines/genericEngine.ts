@@ -58,7 +58,7 @@ export abstract class GenericEngine {
 		return deferred.promise;
 	}
 
-	protected preQuery(jsonQuery: JSONQuery, cacheItemIdentifier: string): Q.Promise<any> {
+	protected doPreQueryOperations(jsonQuery: JSONQuery, cacheItemIdentifier: string): Q.Promise<any> {
 		let deferred = Q.defer<any>();
 
 		switch(jsonQuery.cache.pre) {
@@ -108,112 +108,32 @@ export abstract class GenericEngine {
 		return deferred.promise;
 	}
 
-	public query(queryFile: string, variables: Array<string>): Q.Promise<any> {
+	protected doQueryOperations(cacheItemIdentifier: string, jsonQuery: JSONQuery, variables: Array<string>): Q.Promise<any> {
 		let deferred = Q.defer<any>();
 
-		// Read the query first
-		this.readQueryFile(queryFile).then(
-			(jsonQuery: JSONQuery) => {
-				// Lets get the cache item identifier
-				let cacheItemIdentifier = this.createCacheItemIdentifier(
-					jsonQuery.name,
-					variables
-				);
+		let fullyFormedQuery: string = this.prepareQuery(
+			jsonQuery.query,
+			variables
+		);
 
-				// Check if we have to run anything pre-query
-				if(jsonQuery.cache && jsonQuery.cache.pre) {
-					this.preQuery(jsonQuery, cacheItemIdentifier)
-						.then((rows) => {
-							// Check if there was data returned
-							if(rows !== null) {
-								// Data was returned so pre work is done
-								deferred.resolve(rows);
-
-								if(jsonQuery.cache && jsonQuery.cache.post) {
-									// The post section will run since we found some data
-									this.postQuery(jsonQuery, cacheItemIdentifier, rows)
-										.progress((progress: any) => {
-											// Pass all progress events down the chain
-											deferred.notify(progress);
-										});
-								}
-							} else {
-								// Cache was unset or not found or operation not supported
-								// Either way, lets run the queryJSON
-								// Now that we know the query was read, format the queryJSON
-								let fullyFormedQuery: string = this.prepareQuery(
-									jsonQuery.query,
-									variables
-								);
-
-								this.runQuery(fullyFormedQuery)
-									.then((rows: any) => {
-										// Return the data
-										deferred.notify("Fetched rows from database for "+cacheItemIdentifier);
-										deferred.resolve(rows);
-
-										if(jsonQuery.cache && jsonQuery.cache.post) {
-											// The post section will only run if the query was a success
-											this.postQuery(jsonQuery, cacheItemIdentifier, rows)
-												.progress((progress: any) => {
-													// Pass all progress events down the chain
-													deferred.notify(progress);
-												});
-										}
-									}, (err: any) => {
-										deferred.notify(err);
-										deferred.reject(null);
-									}, (progress: any) => {
-										// Pass all progress events down the chain
-										deferred.notify(progress);
-									});
-							}
-						}, (err: any) => {
-							// This should not be called since preQuery() is not
-							// calling deferred.reject at any point
-						}, (progress: any) => {
-							// Pass all progress events down the chain
-							deferred.notify(progress);
-						})
-				} else {
-					// There was no pre-section
-					// Format the queryJSON
-					let fullyFormedQuery: string = this.prepareQuery(
-						jsonQuery.query,
-						variables
-					);
-
-					this.runQuery(fullyFormedQuery)
-						.then((rows: any) => {
-							// Return the data
-							deferred.notify("Fetched rows from database for "+cacheItemIdentifier);
-							deferred.resolve(rows);
-
-							if(jsonQuery.cache && jsonQuery.cache.post) {
-								// The post section will only run if the query was a success
-								this.postQuery(jsonQuery, cacheItemIdentifier, rows)
-									.progress((progress: any) => {
-										// Pass all progress events down the chain
-										deferred.notify(progress);
-									});
-							}
-						}, (err: any) => {
-							deferred.notify(err);
-							deferred.reject(null);
-						}, (progress: any) => {
-							// Pass all progress events down the chain
-							deferred.notify(progress);
-						});
-				}
-			}, (err) => {
+		// Run the query
+		this.runQuery(fullyFormedQuery)
+			.then((rows: any) => {
+				// Return the data
+				deferred.notify("Fetched rows from database for "+cacheItemIdentifier);
+				deferred.resolve(rows);
+			}, (err: any) => {
+				deferred.notify(err);
 				deferred.reject(err);
-			}
-		)
+			}, (progress: any) => {
+				// Pass all progress events down the chain
+				deferred.notify(progress);
+			});
 
 		return deferred.promise;
 	}
 
-	protected postQuery(jsonQuery: JSONQuery, cacheItemIdentifier: string, rows: any): Q.Promise<any> {
+	protected doPostQueryOperations(jsonQuery: JSONQuery, cacheItemIdentifier: string, rows: any): Q.Promise<any> {
 		let deferred = Q.defer<any>();
 
 		switch(jsonQuery.cache.post) {
@@ -261,6 +181,100 @@ export abstract class GenericEngine {
 				deferred.resolve(null);
 				break;
 		}
+
+		return deferred.promise;
+	}
+
+	public query(queryFile: string, variables: Array<string>): Q.Promise<any> {
+		let deferred = Q.defer<any>();
+
+		// Read the query first
+		this.readQueryFile(queryFile).then(
+			(jsonQuery: JSONQuery) => {
+				// Lets get the cache item identifier
+				let cacheItemIdentifier = this.createCacheItemIdentifier(
+					jsonQuery.name,
+					variables
+				);
+
+				// Check if we have to run anything pre-query
+				if(jsonQuery.cache && jsonQuery.cache.pre) {
+					this.doPreQueryOperations(jsonQuery, cacheItemIdentifier)
+						.then((rows) => {
+							// Check if there was data returned
+							if(rows !== null) {
+								// Data was returned so pre work is done
+								deferred.resolve(rows);
+
+								// Since data was found, no need to run the query
+								if(jsonQuery.cache && jsonQuery.cache.post) {
+									// The post section will run since we found some data
+									this.doPostQueryOperations(jsonQuery, cacheItemIdentifier, rows)
+										.progress((progress: any) => {
+											// Pass all progress events down the chain
+											deferred.notify(progress);
+										});
+								}
+							} else {
+								// Cache was unset or not found or operation not supported
+								// Either way, lets run the query
+								this.doQueryOperations(cacheItemIdentifier, jsonQuery, variables)
+									.then((rows: any) => {
+										// Return the data
+										deferred.resolve(rows);
+
+										if(jsonQuery.cache && jsonQuery.cache.post) {
+											// The post section will only run if the query was a success
+											this.doPostQueryOperations(jsonQuery, cacheItemIdentifier, rows)
+												.progress((progress: any) => {
+													// Pass all progress events down the chain
+													deferred.notify(progress);
+												});
+										}
+									}, (err: any) => {
+										// No data returned so we do not run the post section
+										deferred.notify(err);
+										deferred.reject(err);
+									}, (progress: any) => {
+										// Pass all progress events down the chain
+										deferred.notify(progress);
+									});
+							}
+						}, (err: any) => {
+							// This should not be called since preQuery() is not
+							// calling deferred.reject at any point
+						}, (progress: any) => {
+							// Pass all progress events down the chain
+							deferred.notify(progress);
+						})
+				} else {
+					// There was no pre-section
+					this.doQueryOperations(cacheItemIdentifier, jsonQuery, variables)
+						.then((rows: any) => {
+							// Return the data
+							deferred.resolve(rows);
+
+							if(jsonQuery.cache && jsonQuery.cache.post) {
+								// The post section will only run if the query was a success
+								this.doPostQueryOperations(jsonQuery, cacheItemIdentifier, rows)
+									.progress((progress: any) => {
+										// Pass all progress events down the chain
+										deferred.notify(progress);
+									});
+							}
+						}, (err: any) => {
+							// No data returned so we do not run the post section
+							deferred.notify(err);
+							deferred.reject(err);
+						}, (progress: any) => {
+							// Pass all progress events down the chain
+							deferred.notify(progress);
+						});
+				}
+			}, (err) => {
+				deferred.reject(err);
+			}
+		)
 
 		return deferred.promise;
 	}

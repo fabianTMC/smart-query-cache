@@ -25,13 +25,18 @@ export class SmartCachier {
                 break;
         }
 
-        switch(this.config.engine.toLowerCase()) {
-            case "mysql":
-                this.connection = new MySQLEngine(
-                    this.config.auth,
-                    this.cacheEngine
-                );
-                break;
+        // Check if a cache engine was instantiated
+        if(this.cacheEngine) {
+            switch(this.config.engine.toLowerCase()) {
+                case "mysql":
+                    this.connection = new MySQLEngine(
+                        this.config.auth,
+                        this.cacheEngine
+                    );
+                    break;
+            }
+        } else {
+            throw new Error("Unsupported cache engine");
         }
     }
 
