@@ -2,8 +2,9 @@
 /// <reference path="../typings/q.d.ts"/>
 
 import * as globalConfig from "../config";
-import {DatabaseConnectionConfig, EngineInterface} from "../interfaces/databaseConnectionConfig";
+import {DatabaseConnectionConfig} from "../interfaces/databaseConnectionConfig";
 import {GenericEngine} from "./genericEngine";
+import {CacheEngineInterface} from "../interfaces/CacheEngineInterface";
 
 import * as Q from "q";
 
@@ -12,12 +13,12 @@ let mysql = require("mysql");
 export class MySQLEngine extends GenericEngine {
 	private pool: any;
 
-	constructor(connectionConfig: DatabaseConnectionConfig, connectionLimit: number = globalConfig.connectionLimit) {
-		super();
+	constructor(connectionConfig: DatabaseConnectionConfig, cacheEngine: CacheEngineInterface) {
+		super(cacheEngine);
 
 		// Lets create the connection pool
 		this.pool  = mysql.createPool({
-		  connectionLimit : connectionLimit,
+		  connectionLimit : connectionConfig.connectionPoolLimit,
 		  host: connectionConfig.host,
 		  user: connectionConfig.username,
 		  password: connectionConfig.password,
@@ -25,16 +26,12 @@ export class MySQLEngine extends GenericEngine {
 		});
 	}
 
-	private prepareQuery(query: string, variables: Array<string>): string {
+	protected prepareQuery(query: string, variables: Array<string>): string {
 		return mysql.format(query, variables);
 	}
 
 	// Run a query on the database
-	public query(
-		query: string,
-		cacheIdentifier?: string,
-		variables?: Array<string>
-	): Q.Promise<any> {
+	protected runQuery(query: string): Q.Promise<any> {
 		var deferred = Q.defer<any>();
 
 		this.pool.getConnection((err, connection) => {
@@ -42,10 +39,8 @@ export class MySQLEngine extends GenericEngine {
 		  if(err) {
 			  deferred.reject(err);
 		  } else {
-			  let preparedQuery: string = this.prepareQuery(query, variables);
-
 			  // Use the connection
-			  connection.query(preparedQuery, (connection_err, rows) => {
+			  connection.query(query, (connection_err, rows) => {
 				  // Return the conenction to the pool as we are done with it
   			    connection.release();
 

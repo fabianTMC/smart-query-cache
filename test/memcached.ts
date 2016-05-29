@@ -14,12 +14,16 @@ chai.use(chaiAsPromised);
    running this test
 */
 describe('MemcachedCacheEngine', () => {
-    const engine: MemcachedCacheEngine = new MemcachedCacheEngine();
-
 	const testCases: Array<any> = [
 		{id: 1, name: "John Doe", email: "john@doe.com"},
 		{id: 2, name: "Jane Doe", email: "jane@doe.com"},
 	];
+
+    const localConnection: string = "localhost:11211";
+
+    const engine: MemcachedCacheEngine = new MemcachedCacheEngine(
+        localConnection
+    );
 
 	it('should set item `test1`', () => {
         return chai.expect(engine.set("test1", testCases[0]))

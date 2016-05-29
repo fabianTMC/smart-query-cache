@@ -9,8 +9,8 @@ let memcached = require("memjs");
 export class MemcachedCacheEngine implements CacheEngineInterface {
 	private connection: any;
 
-	constructor() {
-		this.connection = memcached.Client.create();
+	constructor(serversStr: string) {
+		this.connection = memcached.Client.create(serversStr);
 	}
 
 	public flush(): Q.Promise<any> {
@@ -39,7 +39,7 @@ export class MemcachedCacheEngine implements CacheEngineInterface {
 	                deferred.resolve(true);
 	            } else {
 	                // REMOVAL MISS
-	                deferred.reject(false);
+	                deferred.reject(null);
 	            }
 	        }
 	    });
