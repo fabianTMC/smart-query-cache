@@ -1,4 +1,8 @@
 {
 	"name": "login-user",
-	"query": "SELECT * FROM users WHERE email = ?"	
+	"query": "SELECT * FROM users WHERE email = ?",
+	"cache": {
+		"pre": "check",
+		"post": "cache"
+	}
 }

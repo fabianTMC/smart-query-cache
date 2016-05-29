@@ -5,6 +5,7 @@ import * as globalConfig from "../config";
 import {DatabaseConnectionConfig} from "../interfaces/databaseConnectionConfig";
 import {GenericEngine} from "./genericEngine";
 import {CacheEngineInterface} from "../interfaces/CacheEngineInterface";
+import {Notifier} from "../Notifier";
 
 import * as Q from "q";
 
@@ -13,8 +14,8 @@ let mysql = require("mysql");
 export class MySQLEngine extends GenericEngine {
 	private pool: any;
 
-	constructor(connectionConfig: DatabaseConnectionConfig, cacheEngine: CacheEngineInterface) {
-		super(cacheEngine);
+	constructor(connectionConfig: DatabaseConnectionConfig, cacheEngine: CacheEngineInterface, notifier: Notifier) {
+		super(cacheEngine, notifier);
 
 		// Lets create the connection pool
 		this.pool  = mysql.createPool({

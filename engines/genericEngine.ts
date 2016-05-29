@@ -7,6 +7,8 @@ import {DatabaseConnectionConfig} from "../interfaces/databaseConnectionConfig";
 import {JSONQuery} from "../interfaces/JSONQuery";
 import {CacheEngineInterface} from "../interfaces/CacheEngineInterface";
 
+import {Notifier} from "../Notifier";
+
 export abstract class GenericEngine {
 	// All abstract methods are mentioned here
 	protected abstract prepareQuery(query: string, variables: Array<string>): string;
@@ -14,9 +16,11 @@ export abstract class GenericEngine {
 
 	// The implemented part of the class is here
 	protected cacheEngine: CacheEngineInterface;
+	protected notifier: Notifier;
 
-	public constructor(engine: CacheEngineInterface) {
+	public constructor(engine: CacheEngineInterface, notifier?: Notifier) {
 		this.cacheEngine = engine;
+		this.notifier = notifier;
 	}
 
 	protected createCacheItemIdentifier(identifier: string, variables: Array<string>): string {
@@ -65,15 +69,15 @@ export abstract class GenericEngine {
 			case "check":
 				this.cacheEngine.get(cacheItemIdentifier)
 					.then((rows: any) => {
-						deferred.notify("Got " + cacheItemIdentifier + " in the cache");
+						this.notifier && this.notifier.notify("Got " + cacheItemIdentifier + " in the cache");
 
 						// Resolve the promise with the cached rows
 						deferred.resolve(rows);
 					}, (err: any) => {
 						if(err !== null) {
-							deferred.notify(err);
+							this.notifier && this.notifier.notify(err);
 						} else {
-							deferred.notify("Could not find " + cacheItemIdentifier + " in the cache to get.");
+							this.notifier && this.notifier.notify("Could not find " + cacheItemIdentifier + " in the cache to get.");
 						}
 
 						// Resolve the promise as no critical error has occurred
@@ -83,17 +87,17 @@ export abstract class GenericEngine {
 			case "uncache":
 				this.cacheEngine.unset(cacheItemIdentifier)
 					.then(() => {
-						deferred.notify("Unset " + cacheItemIdentifier + " from the cache");
+						this.notifier && this.notifier.notify("Unset " + cacheItemIdentifier + " from the cache");
 
 						// Resolve the promise as the item was unset
 						deferred.resolve(null);
 					}, (err) => {
 						if(err !== null) {
 							// This is an error
-							deferred.notify(err);
+							this.notifier && this.notifier.notify(err);
 						} else {
 							// null indicates a cache miss
-							deferred.notify("Could not find " + cacheItemIdentifier + " in the cache to unset.");
+							this.notifier && this.notifier.notify("Could not find " + cacheItemIdentifier + " in the cache to unset.");
 						}
 
 						// Resolve the promise as no critical error has occurred
@@ -120,14 +124,11 @@ export abstract class GenericEngine {
 		this.runQuery(fullyFormedQuery)
 			.then((rows: any) => {
 				// Return the data
-				deferred.notify("Fetched rows from database for "+cacheItemIdentifier);
+				this.notifier && this.notifier.notify("Fetched rows from database for "+cacheItemIdentifier);
 				deferred.resolve(rows);
 			}, (err: any) => {
-				deferred.notify(err);
+				this.notifier && this.notifier.notify(err);
 				deferred.reject(err);
-			}, (progress: any) => {
-				// Pass all progress events down the chain
-				deferred.notify(progress);
 			});
 
 		return deferred.promise;
@@ -140,17 +141,17 @@ export abstract class GenericEngine {
 			case "uncache":
 				this.cacheEngine.unset(cacheItemIdentifier)
 					.then(() => {
-						deferred.notify("Unset " + cacheItemIdentifier + " from the cache");
+						this.notifier && this.notifier.notify("Unset " + cacheItemIdentifier + " from the cache");
 
 						// Resolve the promise as the item was unset
 						deferred.resolve(null);
 					}, (err) => {
 						if(err !== null) {
 							// This is an error
-							deferred.notify(err);
+							this.notifier && this.notifier.notify(err);
 						} else {
 							// null indicates a cache miss
-							deferred.notify("Could not find " + cacheItemIdentifier + " in the cache to unset.");
+							this.notifier && this.notifier.notify("Could not find " + cacheItemIdentifier + " in the cache to unset.");
 						}
 
 						// Resolve the promise as no critical error has occurred
@@ -160,17 +161,17 @@ export abstract class GenericEngine {
 				case "cache":
 					this.cacheEngine.set(cacheItemIdentifier, rows)
 						.then(() => {
-							deferred.notify("Set " + cacheItemIdentifier + " in the cache");
+							this.notifier && this.notifier.notify("Set " + cacheItemIdentifier + " in the cache");
 
 							// Resolve the promise as the item was unset
 							deferred.resolve(null);
 						}, (err) => {
 							if(err !== false) {
 								// This is an error
-								deferred.notify(err);
+								this.notifier && this.notifier.notify(err);
 							} else {
 								// false indicates a cache set failure
-								deferred.notify("Could not set " + cacheItemIdentifier + " in the cache.");
+								this.notifier && this.notifier.notify("Could not set " + cacheItemIdentifier + " in the cache.");
 							}
 
 							// Resolve the promise as no critical error has occurred
@@ -209,11 +210,7 @@ export abstract class GenericEngine {
 								// Since data was found, no need to run the query
 								if(jsonQuery.cache && jsonQuery.cache.post) {
 									// The post section will run since we found some data
-									this.doPostQueryOperations(jsonQuery, cacheItemIdentifier, rows)
-										.progress((progress: any) => {
-											// Pass all progress events down the chain
-											deferred.notify(progress);
-										});
+									this.doPostQueryOperations(jsonQuery, cacheItemIdentifier, rows);
 								}
 							} else {
 								// Cache was unset or not found or operation not supported
@@ -225,28 +222,15 @@ export abstract class GenericEngine {
 
 										if(jsonQuery.cache && jsonQuery.cache.post) {
 											// The post section will only run if the query was a success
-											this.doPostQueryOperations(jsonQuery, cacheItemIdentifier, rows)
-												.progress((progress: any) => {
-													// Pass all progress events down the chain
-													deferred.notify(progress);
-												});
+											this.doPostQueryOperations(jsonQuery, cacheItemIdentifier, rows);
 										}
 									}, (err: any) => {
 										// No data returned so we do not run the post section
-										deferred.notify(err);
+										this.notifier && this.notifier.notify(err);
 										deferred.reject(err);
-									}, (progress: any) => {
-										// Pass all progress events down the chain
-										deferred.notify(progress);
 									});
 							}
-						}, (err: any) => {
-							// This should not be called since preQuery() is not
-							// calling deferred.reject at any point
-						}, (progress: any) => {
-							// Pass all progress events down the chain
-							deferred.notify(progress);
-						})
+						});
 				} else {
 					// There was no pre-section
 					this.doQueryOperations(cacheItemIdentifier, jsonQuery, variables)
@@ -256,19 +240,12 @@ export abstract class GenericEngine {
 
 							if(jsonQuery.cache && jsonQuery.cache.post) {
 								// The post section will only run if the query was a success
-								this.doPostQueryOperations(jsonQuery, cacheItemIdentifier, rows)
-									.progress((progress: any) => {
-										// Pass all progress events down the chain
-										deferred.notify(progress);
-									});
+								this.doPostQueryOperations(jsonQuery, cacheItemIdentifier, rows);
 							}
 						}, (err: any) => {
 							// No data returned so we do not run the post section
-							deferred.notify(err);
+							this.notifier && this.notifier.notify(err);
 							deferred.reject(err);
-						}, (progress: any) => {
-							// Pass all progress events down the chain
-							deferred.notify(progress);
 						});
 				}
 			}, (err) => {

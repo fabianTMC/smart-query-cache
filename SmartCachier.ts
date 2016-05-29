@@ -1,5 +1,8 @@
 import {SmartCachierConfig, SmartCachierCacheConfig} from "./interfaces/SmartCachierConfig";
 
+// Import the notifier to keep track of what is going on
+import {Notifier} from "./Notifier";
+
 // Import all supported cacheEngines engines
 import {CacheEngineInterface} from "./interfaces/CacheEngineInterface";
 import {MemcachedCacheEngine} from "./engines/cacheEngines/memcached";
@@ -15,7 +18,7 @@ export class SmartCachier {
     private cacheEngine: CacheEngineInterface;
 
     // Constructor for the class
-    constructor(config: SmartCachierConfig, cacheConfig: SmartCachierCacheConfig) {
+    constructor(config: SmartCachierConfig, cacheConfig: SmartCachierCacheConfig, notifier?: Notifier) {
         this.config = config;
         this.cacheConfig = cacheConfig;
 
@@ -31,7 +34,8 @@ export class SmartCachier {
                 case "mysql":
                     this.connection = new MySQLEngine(
                         this.config.auth,
-                        this.cacheEngine
+                        this.cacheEngine,
+                        notifier
                     );
                     break;
             }
