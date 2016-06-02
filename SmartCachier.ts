@@ -26,21 +26,21 @@ export class SmartCachier {
             case "memcached":
                 this.cacheConnection = new MemcachedCacheEngine(this.config.cacheEngine.host);
                 break;
+            default:
+                throw new Error("Unsupported cache engine");
         }
 
-        // Check if a cache engine was instantiated
-        if(this.cacheConnection) {
-            switch(this.config.sqlEngine.engine.toLowerCase()) {
-                case "mysql":
-                    this.connection = new MySQLEngine(
-                        this.config.sqlEngine.auth,
-                        this.cacheConnection,
-                        notifier
-                    );
-                    break;
-            }
-        } else {
-            throw new Error("Unsupported cache engine");
+        // Which SQL engine do we instantiate?
+        switch(this.config.sqlEngine.engine.toLowerCase()) {
+            case "mysql":
+                this.connection = new MySQLEngine(
+                    this.config.sqlEngine.auth,
+                    this.cacheConnection,
+                    notifier
+                );
+                break;
+            default:
+                throw new Error("Unsupported sql engine");
         }
     }
 
