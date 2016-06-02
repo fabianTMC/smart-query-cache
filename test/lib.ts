@@ -3,28 +3,24 @@
 import {SmartCachier} from "../SmartCachier";
 import {Notifier} from "../Notifier";
 
-import * as Q from "q";
-
-let mysqlConfig = {
-    engine: "mysql",
-    auth: {
-        host: "localhost",
-        username: "root",
-        password: "qwertyuiop",
-        database: "myint",
-        connectionPoolLimit: 10
+let config = {
+    sqlEngine: {
+        engine: "mysql",
+        auth: {
+            host: "localhost",
+            username: "root",
+            password: "qwertyuiop",
+            database: "myint",
+            connectionPoolLimit: 10
+        },
     },
+    cacheEngine: {
+        engine: "memcached",
+        host: "localhost:11211"
+    }
 }
 
-let cacheConfig = {
-    engine: "memcached",
-    host: "localhost:11211"
-}
-
-let querier = new SmartCachier(
-    mysqlConfig,
-    cacheConfig
-);
+let querier = new SmartCachier(config);
 
 querier.query("queries/users/login.json", ["fabian.enos@gmail.com"])
     .then((rows) => {
