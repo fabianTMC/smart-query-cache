@@ -23,12 +23,8 @@ let cacheConfig = {
 
 let querier = new SmartCachier(
     mysqlConfig,
-    cacheConfig,
-    new Notifier(
-        (message: string) => {
-            console.log("NOTIFY: " + message);
-        }
-    ));
+    cacheConfig
+);
 
 querier.query("queries/users/login.json", ["fabian.enos@gmail.com"])
     .then((rows) => {

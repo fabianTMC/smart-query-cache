@@ -14,7 +14,7 @@ let mysql = require("mysql");
 export class MySQLEngine extends GenericEngine {
 	private pool: any;
 
-	constructor(connectionConfig: DatabaseConnectionConfig, cacheEngine: CacheEngineInterface, notifier: Notifier) {
+	constructor(connectionConfig: DatabaseConnectionConfig, cacheEngine: CacheEngineInterface, notifier?: Notifier) {
 		super(cacheEngine, notifier);
 
 		// Lets create the connection pool
